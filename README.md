@@ -136,6 +136,34 @@ mode) deny the escape routes so the isolation actually holds:
 Changes to `.mcp.json` take effect on the next session (or after re-approving the
 server).
 
+## Verifying a release
+
+Every release is built by a [pinned GitHub Actions workflow](.github/workflows/publish.yml)
+and published to PyPI with [Trusted Publishing](https://docs.pypi.org/trusted-publishers/) —
+no long-lived API token exists to be stolen. Four independent artifacts back that claim:
+
+| What | Where | Proves |
+|------|-------|--------|
+| **PEP 740 attestation** | PyPI, per file | PyPI itself verified the upload came from this repo's `publish.yml` via OIDC |
+| **SLSA build provenance** | GitHub attestation store | these exact bytes were built by this workflow, at a named commit |
+| **CycloneDX SBOM** | release asset + attestation | the full runtime dependency set, signed |
+| **Sigstore bundle** | release asset (`.sigstore.json`) | keyless signature over each artifact |
+
+Verify provenance and SBOM of a downloaded artifact with the GitHub CLI:
+
+```bash
+gh attestation verify psql_mcp-0.1.0-py3-none-any.whl --repo maxswjeon/psql-mcp
+gh attestation verify psql_mcp-0.1.0-py3-none-any.whl --repo maxswjeon/psql-mcp \
+  --predicate-type https://cyclonedx.org/bom
+```
+
+The PyPI attestation is shown per-file under the release's *"Download files"* → *Provenance*
+on [pypi.org/project/psql-mcp](https://pypi.org/project/psql-mcp/), and is checked by PyPI at
+upload time — a package uploaded from anywhere else would be rejected.
+
+The release pipeline verifies its own provenance **before** publishing, and the upload to PyPI
+requires a human approval on a protected environment.
+
 ## Develop
 
 ```bash

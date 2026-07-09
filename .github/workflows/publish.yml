@@ -3,15 +3,19 @@ name: Publish to PyPI
 on:
   release:
     types: [published]
-  # Manual runs build and check the distributions but never publish.
+  # Manual runs build, attest, and verify — but never publish.
   workflow_dispatch:
 
 permissions: {}
 
 jobs:
   build:
-    name: Build distributions
+    name: Build, SBOM, and attest
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # sign the attestations via Sigstore
+      attestations: write # upload them to the repo's attestation store
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
@@ -35,15 +39,80 @@ jobs:
       - name: Check package metadata
         run: uvx twine check dist/*
 
+      # Kept out of dist/, which is uploaded to PyPI verbatim.
+      - name: Generate CycloneDX SBOM (runtime dependencies)
+        run: |
+          mkdir -p sbom
+          uv export --format requirements-txt --no-dev --no-emit-project --no-hashes > sbom/requirements.txt
+          uvx --from cyclonedx-bom cyclonedx-py requirements sbom/requirements.txt \
+            -o sbom/psql-mcp.cdx.json
+          python3 -c 'import json; d=json.load(open("sbom/psql-mcp.cdx.json")); print("SBOM:", d["bomFormat"], d["specVersion"], "-", len(d["components"]), "components")'
+
+      # SLSA build provenance: proves these exact bytes came from this workflow,
+      # at this commit, on GitHub's runners.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: dist/*
+
+      # actions/attest-sbom is deprecated in favour of actions/attest, which
+      # detects the CycloneDX format and emits a https://cyclonedx.org/bom predicate.
+      - name: Attest SBOM
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        with:
+          subject-path: dist/*
+          sbom-path: sbom/psql-mcp.cdx.json
+
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: dist
           path: dist/
 
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sbom
+          path: sbom/
+
+  verify:
+    name: Verify attestations before publishing
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      attestations: read
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dist
+          path: dist/
+
+      # If provenance can't be verified here, nothing reaches PyPI.
+      - name: Verify build provenance
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for f in dist/*; do
+            echo "::group::provenance $f"
+            gh attestation verify "$f" --repo "$GITHUB_REPOSITORY" \
+              --predicate-type https://slsa.dev/provenance/v1
+            echo "::endgroup::"
+          done
+
+      - name: Verify SBOM attestation
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for f in dist/*; do
+            echo "::group::sbom $f"
+            gh attestation verify "$f" --repo "$GITHUB_REPOSITORY" \
+              --predicate-type https://cyclonedx.org/bom
+            echo "::endgroup::"
+          done
+
   pypi:
     name: Publish to PyPI
     if: github.event_name == 'release'
-    needs: build
+    needs: [build, verify]
     runs-on: ubuntu-latest
     environment:
       name: pypi
@@ -55,6 +124,10 @@ jobs:
         with:
           name: dist
           path: dist/
+
+      # Trusted Publishing (OIDC): no API token. The action also generates and
+      # uploads PEP 740 attestations by default, which PyPI verifies against
+      # this repo/workflow before accepting the files.
       - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
 
   sign:
@@ -71,13 +144,18 @@ jobs:
           name: dist
           path: dist/
 
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: sbom
+          path: sbom/
+
       - name: Sign with Sigstore
         uses: sigstore/gh-action-sigstore-python@5b79a39c381910c090341a2c9b0bf022c8b387e1 # v3.4.0
         with:
           inputs: ./dist/*.tar.gz ./dist/*.whl
 
-      - name: Upload to GitHub Release
+      - name: Upload artifacts, signatures, and SBOM to the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.event.release.tag_name }}
-        run: gh release upload "$TAG" dist/** --repo "$GITHUB_REPOSITORY"
+        run: gh release upload "$TAG" dist/** sbom/psql-mcp.cdx.json --repo "$GITHUB_REPOSITORY"

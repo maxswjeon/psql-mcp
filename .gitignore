@@ -22,3 +22,6 @@ config.local.json
 # Agent/tooling state
 .omc/
 .remember/
+
+# SBOM build output
+sbom/
