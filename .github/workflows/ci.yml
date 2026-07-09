@@ -21,22 +21,22 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
-      - name: Install uv
+      - name: Install uv and Python ${{ matrix.python-version }}
         uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
         with:
           enable-cache: true
-
-      - name: Set up Python ${{ matrix.python-version }}
-        run: uv python install ${{ matrix.python-version }}
+          # Also keys the cache per version; without it every matrix leg
+          # shares one key and the jobs race to save it.
+          python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --extra dev --python ${{ matrix.python-version }}
+        run: uv sync --extra dev
 
       - name: Lint
-        run: uv run --python ${{ matrix.python-version }} ruff check src tests
+        run: uv run ruff check src tests
 
       - name: Test
-        run: uv run --python ${{ matrix.python-version }} pytest -v
+        run: uv run pytest -v
 
   build:
     runs-on: ubuntu-latest
