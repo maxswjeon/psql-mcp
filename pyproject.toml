@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "psql-mcp"
+version = "0.1.0"
+description = "Hardened, read-only Postgres MCP server with credential isolation"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Sangwan Jeon" }]
+keywords = ["mcp", "postgres", "postgresql", "psql", "read-only", "llm", "claude"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Database",
+]
+dependencies = [
+    "mcp>=1.2.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/maxswjeon/psql-mcp"
+Issues = "https://github.com/maxswjeon/psql-mcp/issues"
+
+[project.scripts]
+psql-mcp = "psql_mcp.server:main"
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.8"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/psql_mcp"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/psql_mcp", "templates", "tests", "README.md", "LICENSE"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

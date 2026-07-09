@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+.pytest_cache/
+.venv/
+venv/
+
+# Local config that may contain connection strings — never commit
+config.json
+config.local.json
+*.local.json
+.env
+.env.*
+
+# OS / editors
+.DS_Store
+
+# Agent/tooling state
+.omc/
+.remember/

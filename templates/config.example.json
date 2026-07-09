@@ -1,0 +1,18 @@
+{
+  "server_name": "my-psql",
+  "environments": {
+    "dev": {
+      "wrapper": ".claude/scripts/psql-dev.sh"
+    },
+    "prd": {
+      "wrapper": ".claude/scripts/psql-prd.sh",
+      "production": true
+    },
+    "local": {
+      "url_env": "READONLY_URL"
+    },
+    "scratch": {
+      "dsn": "postgresql://postgres:postgres@localhost:5432/postgres"
+    }
+  }
+}
