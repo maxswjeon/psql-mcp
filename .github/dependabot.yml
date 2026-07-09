@@ -1,0 +1,23 @@
+version: 2
+updates:
+  # Actions are pinned to commit SHAs, so nothing updates without this.
+  # Dependabot reads the trailing "# vX.Y.Z" comment to resolve versions.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci
+
+  - package-ecosystem: uv
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      python:
+        patterns: ["*"]
+    commit-message:
+      prefix: deps
