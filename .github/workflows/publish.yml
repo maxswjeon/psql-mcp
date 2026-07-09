@@ -50,17 +50,25 @@ jobs:
 
       # SLSA build provenance: proves these exact bytes came from this workflow,
       # at this commit, on GitHub's runners.
+      #
+      # Subjects are listed explicitly: `uv build` drops a dist/.gitignore, and
+      # this action's globber matches dotfiles (bash's dist/* does not), which
+      # would otherwise attest a file that is never published.
       - name: Attest build provenance
         uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
         with:
-          subject-path: dist/*
+          subject-path: |
+            dist/*.whl
+            dist/*.tar.gz
 
       # actions/attest-sbom is deprecated in favour of actions/attest, which
       # detects the CycloneDX format and emits a https://cyclonedx.org/bom predicate.
       - name: Attest SBOM
         uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         with:
-          subject-path: dist/*
+          subject-path: |
+            dist/*.whl
+            dist/*.tar.gz
           sbom-path: sbom/psql-mcp.cdx.json
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
