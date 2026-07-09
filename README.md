@@ -149,12 +149,34 @@ no long-lived API token exists to be stolen. Four independent artifacts back tha
 | **CycloneDX SBOM** | release asset + attestation | the full runtime dependency set, signed |
 | **Sigstore bundle** | release asset (`.sigstore.json`) | keyless signature over each artifact |
 
-Verify provenance and SBOM of a downloaded artifact with the GitHub CLI:
+To check a release yourself, first download an artifact — from the GitHub release, or
+straight from PyPI (`pip download --no-deps psql-mcp==0.1.0`):
 
 ```bash
+gh release download v0.1.0 --repo maxswjeon/psql-mcp \
+  --pattern 'psql_mcp-*.whl'
+
+# SLSA build provenance
 gh attestation verify psql_mcp-0.1.0-py3-none-any.whl --repo maxswjeon/psql-mcp
+
+# CycloneDX SBOM attestation
 gh attestation verify psql_mcp-0.1.0-py3-none-any.whl --repo maxswjeon/psql-mcp \
   --predicate-type https://cyclonedx.org/bom
+```
+
+Both exit `0` on success. `gh` only prints its "Verification succeeded" banner to a
+terminal, so in a script or CI log the exit status is the result. Pass `--format json`
+to see which workflow, git ref, and commit produced the artifact.
+
+The `.sigstore.json` bundles attached to the release verify offline, without the
+GitHub API:
+
+```bash
+uvx --from sigstore sigstore verify identity \
+  --bundle psql_mcp-0.1.0-py3-none-any.whl.sigstore.json \
+  --cert-identity 'https://github.com/maxswjeon/psql-mcp/.github/workflows/publish.yml@refs/tags/v0.1.0' \
+  --cert-oidc-issuer https://token.actions.githubusercontent.com \
+  psql_mcp-0.1.0-py3-none-any.whl
 ```
 
 The PyPI attestation is shown per-file under the release's *"Download files"* → *Provenance*
