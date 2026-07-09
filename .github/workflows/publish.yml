@@ -157,13 +157,17 @@ jobs:
           name: sbom
           path: sbom/
 
+      # release-signing-artifacts defaults to true: this step already attaches the
+      # distributions, their .sigstore.json bundles, and the source archives to
+      # the release. Do not upload those again — the names would collide.
       - name: Sign with Sigstore
         uses: sigstore/gh-action-sigstore-python@5b79a39c381910c090341a2c9b0bf022c8b387e1 # v3.4.0
         with:
           inputs: ./dist/*.tar.gz ./dist/*.whl
 
-      - name: Upload artifacts, signatures, and SBOM to the release
+      # Only the SBOM is left to attach. --clobber keeps a re-run idempotent.
+      - name: Upload SBOM to the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.event.release.tag_name }}
-        run: gh release upload "$TAG" dist/** sbom/psql-mcp.cdx.json --repo "$GITHUB_REPOSITORY"
+        run: gh release upload "$TAG" sbom/psql-mcp.cdx.json --clobber --repo "$GITHUB_REPOSITORY"
