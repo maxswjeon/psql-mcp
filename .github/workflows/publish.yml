@@ -17,10 +17,10 @@ jobs:
       id-token: write # sign the attestations via Sigstore
       attestations: write # upload them to the repo's attestation store
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install uv
-        uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
 
       - name: Verify tag matches project version
         if: github.event_name == 'release'
@@ -64,7 +64,7 @@ jobs:
       # actions/attest-sbom is deprecated in favour of actions/attest, which
       # detects the CycloneDX format and emits a https://cyclonedx.org/bom predicate.
       - name: Attest SBOM
-        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-path: |
             dist/*.whl
@@ -136,7 +136,7 @@ jobs:
       # Trusted Publishing (OIDC): no API token. The action also generates and
       # uploads PEP 740 attestations by default, which PyPI verifies against
       # this repo/workflow before accepting the files.
-      - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
 
   sign:
     name: Sign and attach artifacts to release
@@ -161,7 +161,7 @@ jobs:
       # distributions, their .sigstore.json bundles, and the source archives to
       # the release. Do not upload those again — the names would collide.
       - name: Sign with Sigstore
-        uses: sigstore/gh-action-sigstore-python@5b79a39c381910c090341a2c9b0bf022c8b387e1 # v3.4.0
+        uses: sigstore/gh-action-sigstore-python@790bc6befb9d733738f18d8f895854b453640ec9 # v3.5.0
         with:
           inputs: ./dist/*.tar.gz ./dist/*.whl
 
